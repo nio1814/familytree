@@ -24,10 +24,8 @@
                 const columnIndexNickname = familyTable.getColumnIndex('Nickname');
 
                 var names = "";
-                // for(var c=0; c<columnIndices.length; c++)
                 for(const c of [columnIndexFirstFirstName, columnIndexFirstName, columnIndexMiddleName, columnIndexNickname, columnIndexLastName])
                 {
-                    // const name = familyTable.getValue(personID, c);
                     const name = getFamilyTableValue(personID, c);
                     if(name != null)
                         if(c==columnIndexNickname)
@@ -89,13 +87,10 @@
                         {
                             childrenIDs.push(familyTable.getValue(index, columnIndexID));
                         }
-                        // childrenIDs = childrenIDs.concat(ids);
                     }
 
-                    // const columnIndexID = familyTable.getColumnIndex('ID');
                     for(const childID of childrenIDs)
                     {
-                        // const childID = children.getValue(c, columnIndexID);
                         const fatherID = getFamilyTableValue(childID, columnIndexFather);
                         const motherID = getFamilyTableValue(childID, columnIndexMother);
                         if(fatherID >= 0 && motherID >= 0)
@@ -106,14 +101,7 @@
                             partnersIDs[fatherID].add(motherID);
                             partnersIDs[motherID].add(fatherID);
                         }
-                        
-                        // people[people.length] = [
-                        //     {
-                        //         v: childID.toString(),
-                        //         f: getName(childID)
-                        //     },
-                        //     personID.toString()
-                        // ]
+
                         peopleInfo.push([childID, personID]);
 
                         addChildren(childID);
@@ -125,39 +113,10 @@
                     childrenIDs = [];
                     const columnIndexFather = familyTable.getColumnIndex('Father');
                     const columnIndexMother = familyTable.getColumnIndex('Mother');
-                    // {
-                    //     const ids = familyTable.getFilteredRows([{
-                    //         column: columnIndex,
-                    //         value: personID
-                    //     }]);
-                    //     childrenIDs = childrenIDs.concat(ids);
-                    // }
-
-                    // const columnIndexID = familyTable.getColumnIndex('ID');
-                    // for(const childID of childrenIDs)
                     for(const columnName of ['Father', 'Mother'])
                     {
                         const columnIndex = familyTable.getColumnIndex(columnName);
-                        // const childID = children.getValue(c, columnIndexID);
-                        // const fatherID = familyTable.getValue(childID, columnIndexFather);
-                        // const motherID = familyTable.getValue(childID, columnIndexMother);
                         const parentID = getFamilyTableValue(personID, columnIndex);
-                        // if(fatherID >= 0 && motherID >= 0)
-                        // {
-                        //     for(const id of [fatherID, motherID])
-                        //         if(!partnersIDs.hasOwnProperty(id))
-                        //             partnersIDs[id] = new Set();
-                        //     partnersIDs[fatherID].add(motherID);
-                        //     partnersIDs[motherID].add(fatherID);
-                        // }
-                        
-                        // people[people.length] = [
-                        //     {
-                        //         v: childID.toString(),
-                        //         f: getName(childID)
-                        //     },
-                        //     personID.toString()
-                        // ]
                         if(parentID >= 0)
                         {
                             ancestorInfo.push([parentID, personID]);
@@ -176,7 +135,6 @@
                         document.getElementById(this.id).remove();
                     }
                     var imageDiv = document.createElement("div");
-                    // if(image.complete && image.naturalHeight !== 0)
                     imageDiv.appendChild(image);
                     
                     var namesDiv = document.createElement("div");
@@ -188,11 +146,8 @@
                         spouses.className = "partner";
                         if(partnersIDs.hasOwnProperty(personID))
                         {
-                            // display += "<span class='partner'>";
                             for(const partnerID of partnersIDs[personID])
-                                // display += "<br>-" + getName(partnerID);
                                 spouses.innerHTML += "<br>-" + getName(partnerID);
-                            // display += "</span>";
                         }
                         namesDiv.appendChild(spouses);
                     }
@@ -223,59 +178,10 @@
                 var data = new google.visualization.DataTable();
                 data.addColumn('string', 'ID');
                 data.addColumn('string', 'parentID');
-                // data.addRows([
-                //     [{
-                //         v: '0', 
-                //         f: 'Silas Tettey Addy'
-                //     }, '1'],
-                //     [{
-                //         v: '2',
-                //         f: 'Julian Tetteh Addy',
-                //     }, '1'],
-                //     [{v: '1', f: 'Nii Okai Addy'}, '2'],
-                // ]);
-                // data.addRows(family);
-                // data.addRows(people);
 
                 people = [];
                 for(const personInfo of peopleInfo)
                 {
-                    // const personID = personInfo[0];
-                    // let image = document.createElement("img");
-                    // image.src = "image/face/" + personID + ".png";
-                    // image.width = 50;
-                    // image.id = "image" + personID;
-                    // image.onerror = function() {
-                    //     // this.style.visualization = "hidden";
-                    //     document.getElementById(this.id).remove();
-                    // }
-                    // var imageDiv = document.createElement("div");
-                    // // if(image.complete && image.naturalHeight !== 0)
-                    // imageDiv.appendChild(image);
-                    
-                    // var spouses = document.createElement("span");
-                    // spouses.className = "partner";
-                    // if(partnersIDs.hasOwnProperty(personID))
-                    // {
-                    //     // display += "<span class='partner'>";
-                    //     for(const partnerID of partnersIDs[personID])
-                    //         // display += "<br>-" + getName(partnerID);
-                    //         spouses.innerHTML += "<br>-" + getName(partnerID);
-                    //     // display += "</span>";
-                    // }
-                    // var namesDiv = document.createElement("div");
-                    // namesDiv.innerText = getName(personID);
-                    // namesDiv.appendChild(spouses);
-
-                    // const parentID = personInfo[1] < 0 ? "" : personInfo[1].toString();
-                    // people.push([
-                    //     {
-                    //         v: personID.toString(),
-                    //         f: imageDiv.outerHTML + namesDiv.outerHTML
-                    //     },
-                    //     parentID
-                    // ]);
-
                     const person = createLeaf(personInfo[0], personInfo[1]);
                     people.push(person);
                 }
