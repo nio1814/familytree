@@ -12,19 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
+# import json
 import os
 import sqlite3
-from datetime import date
-from itertools import combinations
+# from datetime import date
+# from itertools import combinations
 
-import numpy as np
-import pandas as pd
-from gviz_api import DataTable
-from PySide2 import QtWidgets
+# import numpy as np
+# import pandas as pd
+from flask import current_app, g
+# from gviz_api import DataTable
+from pandas import read_sql
+# from PySide2 import QtWidgets
 
 
-def sql_to_data_table(table_name, data_types=None) -> DataTable:
+# def sql_to_data_table(table_name, data_types=None) -> DataTable:
+def sql_to_data_table(table_name, data_types=None):
     """Convert a SQL table to a google table.
 
     Parameters
@@ -62,8 +65,10 @@ class Database:
     def __init__(self, database_file_path):
         if not os.path.exists(database_file_path):
             raise FileExistsError(database_file_path)
-        self.connection = sqlite3.connect(database_file_path)
-        self.cursor = self.connection.cursor()
+        self._connection = sqlite3.connect(database_file_path, detect_types=sqlite3.PARSE_DECLTYPES)
+        self._connection.row_factory = sqlite3.Row
+        with current_app.open_resource('schema.sql') as file:
+            self._connection.executescript(file.read().decode('utf8'))
 
     def execute_many_single(self, query, values):
         return [row[0] for row in self.cursor.execute(query, values).fetchall()]
@@ -73,6 +78,9 @@ class Database:
         if result:
             return result[0]
         return None
+
+    def query(self, query):
+        return read_sql(query, self._connection)
 
     def people(self):
         return self.cursor.execute('select * from people').fetchall()
@@ -100,49 +108,71 @@ class Database:
         query = f'select id from people where father in ({question_marks}) or mother in ({question_marks})'
         return self.execute_many_single(query, parents + parents)
 
+    def close(self):
+        self._connection.close()
 
-database_file_path = os.path.expanduser('family.db')
-database = Database(database_file_path)
 
-data = pd.read_sql_query('select * from people;', database.connection)
+_DATABASE_KEY = 'database'
 
-# Replace null values with -1 to indicate not specified.
-for column in ['Husband', 'Wife', 'Father', 'Mother']:
-    data[column][data[column].copy().isnull()] = -1
-columns = {}
-for column in data.columns:
-    # if 'date' in column:
-        # data_type = 'date'
-    if data.dtypes[column] in ['O']:
-        data_type = 'string'
-    else:
-        data_type = 'number'
-    columns[column] = (data_type, column)
+def get_database():
+    if _DATABASE_KEY not in g:
+        g.database = Database(current_app.config['DATABASE'])
+    
+    return g.database
 
-table = DataTable(columns)
-table.LoadData(data.to_dict('index').values())
 
-timelines = sql_to_data_table('stays', {'Start': 'date', 
-                                        'End': 'date'})
+def close_database(e=None):
+    database = g.pop(_DATABASE_KEY, None)
+    if database is not None:
+        database.close()
 
-locations = sql_to_data_table('locations')
 
-with open('table.js', 'w') as output_file:
-    code = f"""function loadFamilyData()
-        {{
-            {table.ToJSCode('familyTable')}
-            return familyTable;
-        }}
+def initialize_app(app):
+    app.teardown_appcontext(close_database)
 
-        function loadTimelines()
-        {{
-            {timelines.ToJSCode('timelines')}
-            return timelines;
-        }}
 
-        function loadLocations()
-        {{
-            {locations.ToJSCode('locations')}
-            return locations;
-        }}"""
-    output_file.write(code)
+# database_file_path = os.path.expanduser('family.db')
+# database = Database(database_file_path)
+
+# data = pd.read_sql_query('select * from people;', database.connection)
+
+# # Replace null values with -1 to indicate not specified.
+# for column in ['Husband', 'Wife', 'Father', 'Mother']:
+#     data[column][data[column].copy().isnull()] = -1
+# columns = {}
+# for column in data.columns:
+#     # if 'date' in column:
+#         # data_type = 'date'
+#     if data.dtypes[column] in ['O']:
+#         data_type = 'string'
+#     else:
+#         data_type = 'number'
+#     columns[column] = (data_type, column)
+
+# table = DataTable(columns)
+# table.LoadData(data.to_dict('index').values())
+
+# timelines = sql_to_data_table('stays', {'Start': 'date', 
+#                                         'End': 'date'})
+
+# locations = sql_to_data_table('locations')
+
+# with open('table.js', 'w') as output_file:
+#     code = f"""function loadFamilyData()
+#         {{
+#             {table.ToJSCode('familyTable')}
+#             return familyTable;
+#         }}
+
+#         function loadTimelines()
+#         {{
+#             {timelines.ToJSCode('timelines')}
+#             return timelines;
+#         }}
+
+#         function loadLocations()
+#         {{
+#             {locations.ToJSCode('locations')}
+#             return locations;
+#         }}"""
+#     output_file.write(code)
