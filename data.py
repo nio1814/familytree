@@ -13,21 +13,22 @@
 # limitations under the License.
 
 # import json
+from datetime import date
 import os
 import sqlite3
 # from datetime import date
 # from itertools import combinations
+from numbers import Number
 
 # import numpy as np
-# import pandas as pd
 from flask import current_app, g
-# from gviz_api import DataTable
-from pandas import read_sql
+from gviz_api import DataTable
+from pandas import read_sql, to_datetime
+from pandas.api.types import is_numeric_dtype, is_string_dtype
 # from PySide2 import QtWidgets
 
 
-# def sql_to_data_table(table_name, data_types=None) -> DataTable:
-def sql_to_data_table(table_name, data_types=None):
+def sql_to_data_table(table_name, data_types=None, null_value=None, replace_null_columns=()) -> DataTable:
     """Convert a SQL table to a google table.
 
     Parameters
@@ -39,7 +40,11 @@ def sql_to_data_table(table_name, data_types=None):
     """
     if data_types is None:
         data_types = {}
-    table_data = pd.read_sql_query(f'select * from {table_name};', database.connection)
+    table_data = get_database().query(f'SELECT * FROM {table_name};')
+    if null_value is not None:
+        for column in replace_null_columns:
+            table_data[column][table_data[column].copy().isnull()] = -1
+
     columns = {}
     date_columns = []
     for column in table_data.columns:
@@ -47,18 +52,21 @@ def sql_to_data_table(table_name, data_types=None):
         if data_type == 'date':
             date_columns.append(column)
         elif data_type is None:
-            if table_data.dtypes[column] == np.int64:
+            column_data_type = table_data.dtypes[column]
+            if is_numeric_dtype(column_data_type):
                 data_type = 'number'
-            else:
+            elif is_string_dtype(column_data_type):
                 data_type = 'string'
+            else:
+                raise RuntimeError(f'Unsupported data type for {column}')
         columns[column] = (data_type, column)
         table = DataTable(columns)
     
     for column in date_columns:
-        table_data[column] = pd.to_datetime(table_data[column]).fillna(date.today())
+        table_data[column] = to_datetime(table_data[column]).fillna(date.today())
     table.LoadData(table_data.to_dict('index').values())
 
-    return table
+    return table.ToJSon()
 
 
 class Database:
@@ -130,49 +138,3 @@ def close_database(e=None):
 def initialize_app(app):
     app.teardown_appcontext(close_database)
 
-
-# database_file_path = os.path.expanduser('family.db')
-# database = Database(database_file_path)
-
-# data = pd.read_sql_query('select * from people;', database.connection)
-
-# # Replace null values with -1 to indicate not specified.
-# for column in ['Husband', 'Wife', 'Father', 'Mother']:
-#     data[column][data[column].copy().isnull()] = -1
-# columns = {}
-# for column in data.columns:
-#     # if 'date' in column:
-#         # data_type = 'date'
-#     if data.dtypes[column] in ['O']:
-#         data_type = 'string'
-#     else:
-#         data_type = 'number'
-#     columns[column] = (data_type, column)
-
-# table = DataTable(columns)
-# table.LoadData(data.to_dict('index').values())
-
-# timelines = sql_to_data_table('stays', {'Start': 'date', 
-#                                         'End': 'date'})
-
-# locations = sql_to_data_table('locations')
-
-# with open('table.js', 'w') as output_file:
-#     code = f"""function loadFamilyData()
-#         {{
-#             {table.ToJSCode('familyTable')}
-#             return familyTable;
-#         }}
-
-#         function loadTimelines()
-#         {{
-#             {timelines.ToJSCode('timelines')}
-#             return timelines;
-#         }}
-
-#         function loadLocations()
-#         {{
-#             {locations.ToJSCode('locations')}
-#             return locations;
-#         }}"""
-#     output_file.write(code)

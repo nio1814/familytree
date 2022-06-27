@@ -1,0 +1,30 @@
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/jquery/dist/jquery.min.js"></script>
+  <script src="https://unpkg.com/bootstrap-table@1.20.2/dist/bootstrap-table.min.js"></script>
+  <link href="https://unpkg.com/bootstrap-table@1.20.2/dist/bootstrap-table.min.css" rel="stylesheet">
+  <script>
+    $(function() 
+    {
+      $(document).ready(function()
+      {
+        var $table = $('#people');
+        $table.bootstrapTable({
+          data: {{ people|safe }},
+          columns: [
+            {
+              'field': 'FirstName',
+              'title': ''
+            }, 
+            {
+              'field': "LastName"
+            }
+          ]
+        });
+      })
+    })
+  </script>
+</head>
+
+<body>
+<table id="people" data-search=="true"></table>
+</body>
