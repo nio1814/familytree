@@ -44,6 +44,20 @@ def display_tree():
         # }
         return connections
 
+    def add_parents(person_id, connections=None):
+        if connections is None:
+            connections = []
+        
+        for parent_id in get_database().query('SELECT Father, Mother FROM people WHERE ID = ?', parameters=[person_id]).values[0]:
+            if parent_id is None:
+                continue
+            parent_id = int(parent_id)
+            connections.append([parent_id, person_id])
+            
+            connections = add_parents(parent_id, connections)
+        
+        return connections
+        
     def create_node(person_id, parentID=None):
         return [(str(person_id), render_template('leaf.html', name=get_database().name(person_id))), 
                 "" if parentID is None else str(parentID)]
@@ -52,15 +66,19 @@ def display_tree():
     
     connections = [(root_person_id, None)] + add_children(root_person_id)
 
-    family_data = DataTable([('ID', 'string'),
+    descendents = DataTable([('ID', 'string'),
                              ('parentID', 'string')])
-    people = [create_node(*connection) for connection in connections]
-    family_data.LoadData(people);
+    descendents.LoadData([create_node(*connection) for connection in connections])
+
+    connections = [[root_person_id, None]] + add_parents(root_person_id)
+    ancestors = DataTable([('ID', 'string'),
+                           ('parentID', 'string')])                
+    ancestors.LoadData([create_node(*connection) for connection in connections])
 
     timelines = sql_to_data_table('stays', {'Start': 'date', 'End': 'date'})
     locations = sql_to_data_table('locations')
 
-    return render_template('tree.html', family_data=family_data.ToJSon(), locations=locations, timelines=timelines)
+    return render_template('tree.html', descendents=descendents.ToJSon(), ancestors=ancestors.ToJSon(), locations=locations, timelines=timelines)
 
 
 def create_app(test_config=None):
