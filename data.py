@@ -87,14 +87,34 @@ class Database:
             return result[0]
         return None
 
-    def query(self, query):
-        return read_sql(query, self._connection)
+    def query(self, query, parameters=()):
+        return read_sql(query, self._connection, params=parameters)
 
     def people(self):
         return self.cursor.execute('select * from people').fetchall()
 
     def name(self, person_id):
-        return self.cursor.execute('select ifnull(firstfirstname,"") || " " || ifnull(firstname,"") || " " || ifnull(middlename,"") || " " || ifnull(lastname," ") from people where id = ?', [person_id]).fetchone()[0].lstrip()
+        return self._connection.execute('select ifnull(firstfirstname,"") || " " || ifnull(firstname,"") || " " || ifnull(middlename,"") || " " || ifnull(lastname," ") from people where id = ?', [person_id]).fetchone()[0].lstrip()
+
+    def get_name(personID):
+        # const columnIndexLastName = familyTable.getColumnIndex('LastName');
+        # const columnIndexMiddleName = familyTable.getColumnIndex('MiddleName');
+        # const columnIndexFirstFirstName = familyTable.getColumnIndex('FirstFirstName');
+        # const columnIndexFirstName = familyTable.getColumnIndex('FirstName');
+        # const columnIndexNickname = familyTable.getColumnIndex('Nickname');
+
+        names = ""
+        # for(const c of [columnIndexFirstFirstName, columnIndexFirstName, columnIndexMiddleName, columnIndexNickname, columnIndexLastName])
+        # {
+        #     const name = getFamilyTableValue(personID, c);
+        #     if(name != null)
+        #         if(c==columnIndexNickname)
+        #             names += " \"" + name + "\"";
+        #         else
+        #             names += " " + name;
+        # }
+
+        return names
 
     def wife(self, person_id):
         return self.execute_one_single('select id from people where husband = ?', [person_id])

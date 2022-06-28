@@ -1,7 +1,7 @@
 <html>
     <head>
         <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-        <script type="text/javascript" src="table.js"></script>
+        <!-- <script type="text/javascript" src="table.js"></script> -->
         <script type="text/javascript">
             function getFamilyTableValue(personID, columnIndex)
             {
@@ -13,28 +13,6 @@
                 ])[0];
 
                 return familyTable.getValue(rowIndex, columnIndex);
-            }
-
-            function getName(personID)
-            {
-                const columnIndexLastName = familyTable.getColumnIndex('LastName');
-                const columnIndexMiddleName = familyTable.getColumnIndex('MiddleName');
-                const columnIndexFirstFirstName = familyTable.getColumnIndex('FirstFirstName');
-                const columnIndexFirstName = familyTable.getColumnIndex('FirstName');
-                const columnIndexNickname = familyTable.getColumnIndex('Nickname');
-
-                var names = "";
-                for(const c of [columnIndexFirstFirstName, columnIndexFirstName, columnIndexMiddleName, columnIndexNickname, columnIndexLastName])
-                {
-                    const name = getFamilyTableValue(personID, c);
-                    if(name != null)
-                        if(c==columnIndexNickname)
-                            names += " \"" + name + "\"";
-                        else
-                            names += " " + name;
-                }
-
-                return names;
             }
 
             google.charts.load('current', {packages:["orgchart", "timeline"]});
@@ -55,13 +33,13 @@
                 }
                 var peopleList = document.getElementById("people");
                 
-                for(var r=0; r<familyTable.getNumberOfRows(); r++)
-                {
-                    var item = document.createElement("option");
-                    const personID = familyTable.getValue(r, columnIndexID);
-                    item.text = getName(personID);
-                    peopleList.add(item);
-                }
+                // for(var r=0; r<familyTable.getNumberOfRows(); r++)
+                // {
+                //     var item = document.createElement("option");
+                //     const personID = familyTable.getValue(r, columnIndexID);
+                //     item.text = getName(personID);
+                //     peopleList.add(item);
+                // }
 
                 drawChart(0);
             });
@@ -71,42 +49,6 @@
                 const rootPersonID = familyTable.getValue(rootPersonIndex, columnIndexID);
                 var partnersIDs = {};
                 var peopleInfo = [];
-
-                function addChildren(personID)
-                {
-                    childrenIDs = [];
-                    const columnIndexFather = familyTable.getColumnIndex('Father');
-                    const columnIndexMother = familyTable.getColumnIndex('Mother');
-                    for(const columnIndex of [columnIndexFather, columnIndexMother])
-                    {
-                        const indices = familyTable.getFilteredRows([{
-                            column: columnIndex,
-                            value: personID
-                        }]);
-                        for(const index of indices)
-                        {
-                            childrenIDs.push(familyTable.getValue(index, columnIndexID));
-                        }
-                    }
-
-                    for(const childID of childrenIDs)
-                    {
-                        const fatherID = getFamilyTableValue(childID, columnIndexFather);
-                        const motherID = getFamilyTableValue(childID, columnIndexMother);
-                        if(fatherID >= 0 && motherID >= 0)
-                        {
-                            for(const id of [fatherID, motherID])
-                                if(!partnersIDs.hasOwnProperty(id))
-                                    partnersIDs[id] = new Set();
-                            partnersIDs[fatherID].add(motherID);
-                            partnersIDs[motherID].add(fatherID);
-                        }
-
-                        peopleInfo.push([childID, personID]);
-
-                        addChildren(childID);
-                    }
-                }
 
                 function addParents(personID)
                 {
@@ -125,99 +67,37 @@
                     }
                 }
 
-                function createLeaf(personID, parentID, addSpouse=true)
-                {
-                    let image = document.createElement("img");
-                    image.src = "image/face/" + personID + ".png";
-                    image.width = 50;
-                    image.id = "image" + personID;
-                    image.onerror = function() {
-                        document.getElementById(this.id).remove();
-                    }
-                    var imageDiv = document.createElement("div");
-                    imageDiv.appendChild(image);
-                    
-                    var namesDiv = document.createElement("div");
-                    namesDiv.innerText = getName(personID);
-                    
-                    if(addSpouse)
-                    {
-                        var spouses = document.createElement("span");
-                        spouses.className = "partner";
-                        if(partnersIDs.hasOwnProperty(personID))
-                        {
-                            for(const partnerID of partnersIDs[personID])
-                                spouses.innerHTML += "<br>-" + getName(partnerID);
-                        }
-                        namesDiv.appendChild(spouses);
-                    }
-
-                    parentID = parentID < 0 ? "" : parentID.toString();
-
-                    return [
-                        {
-                            v: personID.toString(),
-                            f: imageDiv.outerHTML + namesDiv.outerHTML
-                        },
-                        parentID
-                    ];
-                }
-
-                var people = [];
-                people[0] = [
-                    {
-                        v: rootPersonID.toString(),
-                        f: getName(rootPersonID)
-                    },
-                    ''
-                ];
-                peopleInfo.push([rootPersonID, -1]);
-                
-                addChildren(rootPersonID);
-
-                var data = new google.visualization.DataTable();
-                data.addColumn('string', 'ID');
-                data.addColumn('string', 'parentID');
-
-                people = [];
-                for(const personInfo of peopleInfo)
-                {
-                    const person = createLeaf(personInfo[0], personInfo[1]);
-                    people.push(person);
-                }
-                data.addRows(people);
-
                 var chart = new google.visualization.OrgChart(document.getElementById('familyTree'));
-                chart.draw(data, {'allowHtml': true});
+                chart.draw(familyTable, {'allowHtml': true});
 
-                var data = new google.visualization.DataTable();
-                data.addColumn('string', 'ID');
-                data.addColumn('string', 'parentID');
+                // var data = new google.visualization.DataTable();
+                // data.addColumn('string', 'ID');
+                // data.addColumn('string', 'parentID');
                 
-                var ancestorInfo = [[rootPersonID, -1]];
-                addParents(rootPersonID);
+                // var ancestorInfo = [[rootPersonID, -1]];
+                // addParents(rootPersonID);
 
-                people = [];
-                for(const personInfo of ancestorInfo)
-                {
-                    const person = createLeaf(personInfo[0], personInfo[1], false);
-                    people.push(person);
-                }
-                data.addRows(people);
+                // people = [];
+                // for(const personInfo of ancestorInfo)
+                // {
+                //     const person = createLeaf(personInfo[0], personInfo[1], false);
+                //     people.push(person);
+                // }
+                // data.addRows(people);
 
-                var ancestorChart = new google.visualization.OrgChart(document.getElementById('ancestorTree'));
-                ancestorChart.draw(data, {'allowHtml': true});
+                // var ancestorChart = new google.visualization.OrgChart(document.getElementById('ancestorTree'));
+                // ancestorChart.draw(data, {'allowHtml': true});
 
-                var timeline = new google.visualization.Timeline(document.getElementById('timeline'));
+                // var timeline = new google.visualization.Timeline(document.getElementById('timeline'));
 
-                var timelineData = new google.visualization.DataView(timelines);
-                const personIDColumn = timelineData.getColumnIndex('PersonID');
-                timelineData.setRows(timelineData.getFilteredRows([{
-                    column: personIDColumn,
-                    value: rootPersonID
-                }]));
-                timelineData.setColumns([0, timelineData.getColumnIndex('Start'), timelineData.getColumnIndex('End')]);
-                timeline.draw(timelineData);
+                // var timelineData = new google.visualization.DataView(timelines);
+                // const personIDColumn = timelineData.getColumnIndex('PersonID');
+                // timelineData.setRows(timelineData.getFilteredRows([{
+                //     column: personIDColumn,
+                //     value: rootPersonID
+                // }]));
+                // timelineData.setColumns([0, timelineData.getColumnIndex('Start'), timelineData.getColumnIndex('End')]);
+                // timeline.draw(timelineData);
             }
         </script>
         <style>
@@ -230,7 +110,11 @@
     </head>
     <body>
         <div>
-            <select id="people" onchange="drawChart(this.selectedIndex)"></select>
+            <ul id="people" onchange="drawChart(this.selectedIndex)">
+              {% for person in people %}
+              <li>{{ person.name }}</li>
+              {% endfor %}
+            </ul>
         </div>
         <div id="familyTree"></div>
         <hr>
