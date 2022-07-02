@@ -3,9 +3,11 @@ from multiprocessing import connection
 import os
 from re import T
 import re
+from datetime import datetime
 
 from flask import Blueprint, Flask, render_template, request
 from gviz_api import DataTable
+from pandas import to_datetime
 
 from data import get_database, initialize_app, sql_to_data_table
 
@@ -75,10 +77,16 @@ def display_tree():
                            ('parentID', 'string')])                
     ancestors.LoadData([create_node(*connection) for connection in connections])
 
-    timelines = sql_to_data_table('stays', {'Start': 'date', 'End': 'date'})
-    locations = sql_to_data_table('locations')
+    stays = get_database().query('SELECT Location.City, Start, End FROM Stay INNER JOIN Location ON Location.ID = Stay.LocationID WHERE PersonID = ?', [root_person_id])
+    for column in ['Start', 'End']:
+        stays[column] = to_datetime(stays[column])
+        stays.fillna(datetime.today(), inplace=True)
+    timelines = DataTable([('city', 'string'), 
+                           ('Start', 'date'), 
+                           ('End', 'date')])
+    timelines.LoadData(stays.values.tolist())
 
-    return render_template('tree.html', descendents=descendents.ToJSon(), ancestors=ancestors.ToJSon(), locations=locations, timelines=timelines)
+    return render_template('tree.html', descendents=descendents.ToJSon(), ancestors=ancestors.ToJSon(), timelines=timelines.ToJSon())
 
 
 def create_app(test_config=None):

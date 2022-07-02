@@ -22,16 +22,6 @@
                 columnIndexID = familyTable.getColumnIndex('ID');
                 locations = new google.visualization.DataTable({{ locations|safe }});;
                 timelines = new google.visualization.DataTable({{ timelines|safe }});;
-                timelines.insertColumn(0, 'string', 'City');
-                const cityColumnIndex = locations.getColumnIndex('City');
-                const locationIDColumnIndex = timelines.getColumnIndex('Location');
-                var cities = [];
-                for(var n=0; n<timelines.getNumberOfRows(); n++)
-                {
-                    const locationID = timelines.getValue(n, locationIDColumnIndex);
-                    const city = locations.getValue(locationID, cityColumnIndex);
-                    timelines.setValue(n, 0, city);
-                }
                 var peopleList = document.getElementById("people");
                 
                 // for(var r=0; r<familyTable.getNumberOfRows(); r++)
@@ -59,13 +49,7 @@
 
                 var timeline = new google.visualization.Timeline(document.getElementById('timeline'));
 
-                var timelineData = new google.visualization.DataView(timelines);
-                const personIDColumn = timelineData.getColumnIndex('PersonID');
-                timelineData.setRows(timelineData.getFilteredRows([{
-                    column: personIDColumn,
-                    value: rootPersonID
-                }]));
-                timelineData.setColumns([0, timelineData.getColumnIndex('Start'), timelineData.getColumnIndex('End')]);
+                var timelineData = new google.visualization.DataTable({{ timelines|safe }});
                 timeline.draw(timelineData);
             }
         </script>
