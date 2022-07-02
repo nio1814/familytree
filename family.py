@@ -5,7 +5,7 @@ from re import T
 import re
 from datetime import datetime
 
-from flask import Blueprint, Flask, render_template, request
+from flask import Blueprint, Flask, render_template, request, url_for
 from gviz_api import DataTable
 from pandas import to_datetime
 
@@ -61,7 +61,10 @@ def display_tree():
         return connections
         
     def create_node(person_id, parentID=None):
-        return [(str(person_id), render_template('leaf.html', name=get_database().name(person_id))), 
+        file_path_image = url_for('static', filename=f'image/face/{person_id}.png')
+        if not os.path.exists('.' + file_path_image):
+            file_path_image = None
+        return [(str(person_id), render_template('leaf.html', name=get_database().name(person_id), image=file_path_image)), 
                 "" if parentID is None else str(parentID)]
 
     root_person_id = request.args.get('id', 0)
@@ -77,7 +80,7 @@ def display_tree():
                            ('parentID', 'string')])                
     ancestors.LoadData([create_node(*connection) for connection in connections])
 
-    stays = get_database().query('SELECT Location.City, Start, End FROM Stay INNER JOIN Location ON Location.ID = Stay.LocationID WHERE PersonID = ?', [root_person_id])
+    stays = get_database().query('SELECT Location.City, Start, End FROM Stay INNER JOIN Location ON Location.ID = Stay.LocationID WHERE PersonID = ? ORDER BY Start', [root_person_id])
     for column in ['Start', 'End']:
         stays[column] = to_datetime(stays[column])
         stays.fillna(datetime.today(), inplace=True)
