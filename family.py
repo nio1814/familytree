@@ -26,6 +26,7 @@ def display_tree():
     def add_children(parent_id, connections=None):
         if connections is None:
             connections = []
+        # connections = list(connections)
 
         for _, child in get_database().query('SELECT ID FROM people WHERE Father = ? OR Mother = ?', 
                                              parameters=[parent_id] * 2).iterrows():
@@ -42,7 +43,7 @@ def display_tree():
         #         partnersIDs[motherID].add(fatherID)
         #     }
             connections.append((int(child.ID), parent_id))
-            connections = add_children(child.ID, connections)
+            connections = add_children(int(child.ID), connections)
         # }
         return connections
 
@@ -67,7 +68,7 @@ def display_tree():
         return [(str(person_id), render_template('leaf.html', name=get_database().name(person_id), image=file_path_image)), 
                 "" if parentID is None else str(parentID)]
 
-    root_person_id = request.args.get('id', 0)
+    root_person_id = int(request.args.get('id', 0))
     
     connections = [(root_person_id, None)] + add_children(root_person_id)
 
@@ -89,7 +90,12 @@ def display_tree():
                            ('End', 'date')])
     timelines.LoadData(stays.values.tolist())
 
-    return render_template('tree.html', descendents=descendents.ToJSon(), ancestors=ancestors.ToJSon(), timelines=timelines.ToJSon())
+    database = get_database()
+    people = [{'name': database.name(int(person_id)),
+               'id': int(person_id)}
+              for person_id in database.query('SELECT ID FROM people ORDER BY LastName, FirstName').ID.values]
+
+    return render_template('tree.html', descendents=descendents.ToJSon(), ancestors=ancestors.ToJSon(), timelines=timelines.ToJSon(), people=people)
 
 
 def create_app(test_config=None):
