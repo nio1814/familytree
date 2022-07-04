@@ -64,6 +64,16 @@
                 {
                     $("#sidebar").toggleClass("active");
                 })
+
+                $("#peopleFilter").keyup(function()
+                {
+                    var filter = $("#peopleFilter").val().toLowerCase();
+                    for(let item of $("#people li"))
+                    {
+                        var displayStyle = $(item).text().toLowerCase().indexOf(filter) > -1 ? "" : "none";
+                        $(item).css("display", displayStyle);
+                    };
+                });
             });
         </script>
         <style>
@@ -104,7 +114,7 @@
     <body>
         <div class="wrapper">
             <nav id="sidebar">
-                <input type="text">
+                <input id="peopleFilter" type="text">
                 <ul id="people" class="list-group" onchange="drawChart(this.selectedIndex)">
                     {% for person in people %}
                     <li class="list-group-item"><a href="tree?id={{ person.id }}">{{ person.name }}</a></li>
