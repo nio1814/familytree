@@ -3,6 +3,9 @@
         <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
         <!-- <script type="text/javascript" src="table.js"></script> -->
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/malihu-custom-scrollbar-plugin/3.1.5/jquery.mCustomScrollbar.min.css">
+        <script src="https://code.jquery.com/jquery-3.6.0.slim.min.js" integrity="sha256-u7e5khyithlIdTpu22PHhENmPcRdFiHRjhAuHcs05RI=" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/malihu-custom-scrollbar-plugin/3.1.5/jquery.mCustomScrollbar.concat.min.js"></script>
         <script type="text/javascript">
             function getFamilyTableValue(personID, columnIndex)
             {
@@ -53,6 +56,15 @@
                 var timelineData = new google.visualization.DataTable({{ timelines|safe }});
                 timeline.draw(timelineData);
             }
+
+            $(document).ready(function()
+            {
+                $("#sidebar").mCustomScrollbar({theme: "minimal"});
+                $("#sideBarToggle").on("click", function ()
+                {
+                    $("#sidebar").toggleClass("active");
+                })
+            });
         </script>
         <style>
             .partner 
@@ -60,25 +72,56 @@
                 color: maroon;
                 font-size: smaller;
             }
+            
+            .wrapper
+            {
+                display: flex;
+                width: 100%;
+                /* align-items: stretch; */
+            }
+
+            #sidebar
+            {
+                width: 250px;
+                transition: all .3s;
+                /* position: fixed; */
+                /* top: 100px; */
+                height: 100vh;
+            }
+            
+            #sidebar.active
+            {
+                margin-left: -250px;
+            }
+
+            #sidebar nav
+            {
+                /* padding-left: 250px; */
+                /* position: fixed; */
+            }
         </style>
     </head>
     <body>
-        <div class="container-fluid">
-            <div class="row flex-nowrap">
-                <div class="col-2">
-                    <ul id="people" class="list-group" onchange="drawChart(this.selectedIndex)">
-                        {% for person in people %}
-                        <li class="list-group-item"><a href="tree?id={{ person.id }}">{{ person.name }}</a></li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                <div class="col-10">
-                    <div id="familyTree"></div>
-                    <hr>
-                    <div id="ancestorTree"></div>
-                    <hr>
-                    <div id="timeline" style="height: 1000px;"></div>
-                </div>
+        <div class="wrapper">
+            <nav id="sidebar">
+                <input type="text">
+                <ul id="people" class="list-group" onchange="drawChart(this.selectedIndex)">
+                    {% for person in people %}
+                    <li class="list-group-item"><a href="tree?id={{ person.id }}">{{ person.name }}</a></li>
+                    {% endfor %}
+                </ul>
+            </nav>
+            <div id="content" class="container-fluid">
+                <nav class="navbar" style="pos">
+                    <button id="sideBarToggle" type="button">
+                        <span>Toggle List</span>
+                    </button>
+                </nav>
+                <div id="familyTree"></div>
+                <hr>
+                <div id="ancestorTree"></div>
+                <hr>
+                <div id="timeline" style="height: 1000px;"></div>
             </div>
         </div>
     </body>
