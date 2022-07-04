@@ -68,7 +68,7 @@
                 $("#peopleFilter").keyup(function()
                 {
                     var filter = $("#peopleFilter").val().toLowerCase();
-                    for(let item of $("#people li"))
+                    for(let item of $("#people a"))
                     {
                         var displayStyle = $(item).text().toLowerCase().indexOf(filter) > -1 ? "" : "none";
                         $(item).css("display", displayStyle);
@@ -107,7 +107,6 @@
             #sidebar nav
             {
                 /* padding-left: 250px; */
-                /* position: fixed; */
             }
         </style>
     </head>
@@ -115,11 +114,16 @@
         <div class="wrapper">
             <nav id="sidebar">
                 <input id="peopleFilter" type="text">
-                <ul id="people" class="list-group" onchange="drawChart(this.selectedIndex)">
+                <div id="people" class="list-group">
                     {% for person in people %}
-                    <li class="list-group-item"><a href="tree?id={{ person.id }}">{{ person.name }}</a></li>
+                    {% if person.id == person_id %}
+                    {% set class = "list-group-item list-group-item-action active" %}
+                    {% else %}
+                    {% set class = "list-group-item list-group-item-action" %}
+                    {% endif %}
+                    <a class="{{ class }}" href="tree?id={{ person.id }}">{{ person.name }}</a>
                     {% endfor %}
-                </ul>
+                </div>
             </nav>
             <div id="content" class="container-fluid">
                 <nav class="navbar" style="pos">
