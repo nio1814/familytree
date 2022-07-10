@@ -1,0 +1,151 @@
+<html>
+    <head>
+        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+        <!-- <script type="text/javascript" src="table.js"></script> -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/malihu-custom-scrollbar-plugin/3.1.5/jquery.mCustomScrollbar.min.css">
+        <script src="https://code.jquery.com/jquery-3.6.0.slim.min.js" integrity="sha256-u7e5khyithlIdTpu22PHhENmPcRdFiHRjhAuHcs05RI=" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/malihu-custom-scrollbar-plugin/3.1.5/jquery.mCustomScrollbar.concat.min.js"></script>
+        <script type="text/javascript">
+            function getFamilyTableValue(personID, columnIndex)
+            {
+                var rowIndex = familyTable.getFilteredRows([
+                    {
+                        column: columnIndexID,
+                        value: personID
+                    }
+                ])[0];
+
+                return familyTable.getValue(rowIndex, columnIndex);
+            }
+
+            google.charts.load('current', {packages:["orgchart", "timeline"]});
+            google.charts.setOnLoadCallback(function() {
+                familyTable = new google.visualization.DataTable({{ descendents|safe }});
+                ancestors = new google.visualization.DataTable({{ ancestors|safe }});
+                columnIndexID = familyTable.getColumnIndex('ID');
+                locations = new google.visualization.DataTable({{ locations|safe }});;
+                timelines = new google.visualization.DataTable({{ timelines|safe }});;
+                var peopleList = document.getElementById("people");
+                
+                // for(var r=0; r<familyTable.getNumberOfRows(); r++)
+                // {
+                //     var item = document.createElement("option");
+                //     const personID = familyTable.getValue(r, columnIndexID);
+                //     item.text = getName(personID);
+                //     peopleList.add(item);
+                // }
+
+                drawChart(0);
+            });
+
+            function drawChart(rootPersonIndex)
+            {
+                const rootPersonID = familyTable.getValue(rootPersonIndex, columnIndexID);
+                var partnersIDs = {};
+                var peopleInfo = [];
+
+                var chart = new google.visualization.OrgChart(document.getElementById('familyTree'));
+                chart.draw(familyTable, {
+                    'allowHtml': true, 
+                });
+                google.visualization.events.addListener(chart, "select", function(event) {
+                });
+
+                ancestorChart = new google.visualization.OrgChart(document.getElementById('ancestorTree'));
+                ancestorChart.draw(ancestors, {'allowHtml': true});
+                
+
+                var timeline = new google.visualization.Timeline(document.getElementById('timeline'));
+
+                var timelineData = new google.visualization.DataTable({{ timelines|safe }});
+                timeline.draw(timelineData);
+            }
+
+            $(document).ready(function()
+            {
+                $("#sidebar").mCustomScrollbar({
+                    theme: "minimal",
+                    setTop: $("a[name='personLink']").offsetTop
+                });
+                $("#sideBarToggle").on("click", function ()
+                {
+                    $("#sidebar").toggleClass("active");
+                })
+
+                $("#peopleFilter").keyup(function()
+                {
+                    var filter = $("#peopleFilter").val().toLowerCase();
+                    for(let item of $("#people a"))
+                    {
+                        var displayStyle = $(item).text().toLowerCase().indexOf(filter) > -1 ? "" : "none";
+                        $(item).css("display", displayStyle);
+                    };
+                });
+            });
+        </script>
+        <style>
+            .partner 
+            {
+                color: maroon;
+                font-size: smaller;
+            }
+            
+            .wrapper
+            {
+                display: flex;
+                width: 100%;
+                /* align-items: stretch; */
+            }
+
+            #sidebar
+            {
+                width: 250px;
+                transition: all .3s;
+                /* position: fixed; */
+                /* top: 100px; */
+                height: 100vh;
+            }
+            
+            #sidebar.active
+            {
+                margin-left: -250px;
+            }
+
+            #sidebar nav
+            {
+                /* padding-left: 250px; */
+            }
+        </style>
+    </head>
+    <body>
+        <div class="wrapper">
+            <nav id="sidebar">
+                <input id="peopleFilter" type="text">
+                <div id="people" class="list-group">
+                    {% for person in people %}
+                    {% if person.id == person_id %}
+                    {% set class = "list-group-item list-group-item-action active" %}
+                    <a name="personLink"></a>
+                    {% else %}
+                    {% set class = "list-group-item list-group-item-action" %}
+                    {% endif %}
+                    <a class="{{ class }}" href="tree?id={{ person.id }}">{{ person.name }}</a>
+                    {% endfor %}
+                </div>
+            </nav>
+            <div id="content" class="container-fluid">
+                <nav class="navbar" style="pos">
+                    <button id="sideBarToggle" type="button">
+                        <span>Toggle List</span>
+                    </button>
+                </nav>
+                <div id="familyTree"></div>
+                <hr>
+                <div id="ancestorTree"></div>
+                <hr>
+                <div id="timeline" style="height: 1000px;"></div>
+            </div>
+        </div>
+    </body>
+</html>

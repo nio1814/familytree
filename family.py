@@ -1,148 +1,116 @@
-# Copyright 2021
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-import json
+from mimetypes import init
+from multiprocessing import connection
 import os
-import sqlite3
-from datetime import date
-from itertools import combinations
+from re import T
+import re
+from datetime import datetime
 
-import numpy as np
-import pandas as pd
+from flask import Blueprint, Flask, render_template, request, url_for
 from gviz_api import DataTable
-from PySide2 import QtWidgets
+from pandas import to_datetime
+
+from data import get_database, initialize_app, sql_to_data_table
+
+home = Blueprint('home', __name__)
 
 
-def sql_to_data_table(table_name, data_types=None) -> DataTable:
-    """Convert a SQL table to a google table.
+@home.route('/')
+def list_people():
+    people = get_database().query('SELECT FirstName, LastName FROM people ORDER BY LastName')
 
-    Parameters
-    ----------
-    table_name : str
-        The name of the table.
-    data_types : str
-        The DataTable type.
-    """
-    if data_types is None:
-        data_types = {}
-    table_data = pd.read_sql_query(f'select * from {table_name};', database.connection)
-    columns = {}
-    date_columns = []
-    for column in table_data.columns:
-        data_type = data_types.get(column)
-        if data_type == 'date':
-            date_columns.append(column)
-        elif data_type is None:
-            if table_data.dtypes[column] == np.int64:
-                data_type = 'number'
-            else:
-                data_type = 'string'
-        columns[column] = (data_type, column)
-        table = DataTable(columns)
+    return render_template('home.html', people=people.to_json(orient='records'))
+
+
+@home.route('/tree')
+def display_tree():
+    def add_children(parent_id, connections=None):
+        if connections is None:
+            connections = []
+
+        for _, child in get_database().query('SELECT ID FROM people WHERE Father = ? OR Mother = ?', 
+                                             parameters=[parent_id] * 2).iterrows():
+        # for(const childID of childrenIDs)
+        # {
+        #     const fatherID = getFamilyTableValue(childID, columnIndexFather)
+        #     const motherID = getFamilyTableValue(childID, columnIndexMother)
+        #     if(fatherID >= 0 && motherID >= 0)
+        #     {
+        #         for(const id of [fatherID, motherID])
+        #             if(!partnersIDs.hasOwnProperty(id))
+        #                 partnersIDs[id] = new Set()
+        #         partnersIDs[fatherID].add(motherID)
+        #         partnersIDs[motherID].add(fatherID)
+        #     }
+            connections.append((int(child.ID), parent_id))
+            connections = add_children(int(child.ID), connections)
+        # }
+        return connections
+
+    def add_parents(person_id, connections=None):
+        if connections is None:
+            connections = []
+        
+        for parent_id in get_database().query('SELECT Father, Mother FROM people WHERE ID = ?', parameters=[person_id]).values[0]:
+            if parent_id is None:
+                continue
+            parent_id = int(parent_id)
+            connections.append([parent_id, person_id])
+            
+            connections = add_parents(parent_id, connections)
+        
+        return connections
+        
+    def create_node(person_id, parentID=None):
+        file_path_image = url_for('static', filename=f'image/face/{person_id}.png')
+        if not os.path.exists('.' + file_path_image):
+            file_path_image = None
+        return [(str(person_id), render_template('leaf.html', name=get_database().name(person_id), image=file_path_image)), 
+                "" if parentID is None else str(parentID)]
+
+    root_person_id = int(request.args.get('id', 0))
     
-    for column in date_columns:
-        table_data[column] = pd.to_datetime(table_data[column]).fillna(date.today())
-    table.LoadData(table_data.to_dict('index').values())
+    connections = [(root_person_id, None)] + add_children(root_person_id)
 
-    return table
+    descendents = DataTable([('ID', 'string'),
+                             ('parentID', 'string')])
+    descendents.LoadData([create_node(*connection) for connection in connections])
 
+    connections = [[root_person_id, None]] + add_parents(root_person_id)
+    ancestors = DataTable([('ID', 'string'),
+                           ('parentID', 'string')])                
+    ancestors.LoadData([create_node(*connection) for connection in connections])
 
-class Database:
-    def __init__(self, database_file_path):
-        if not os.path.exists(database_file_path):
-            raise FileExistsError(database_file_path)
-        self.connection = sqlite3.connect(database_file_path)
-        self.cursor = self.connection.cursor()
+    stays = get_database().query('SELECT Location.City, Start, End FROM Stay INNER JOIN Location ON Location.ID = Stay.LocationID WHERE PersonID = ? ORDER BY Start', [root_person_id])
+    for column in ['Start', 'End']:
+        stays[column] = to_datetime(stays[column])
+        stays.fillna(datetime.today(), inplace=True)
+    timelines = DataTable([('city', 'string'), 
+                           ('Start', 'date'), 
+                           ('End', 'date')])
+    timelines.LoadData(stays.values.tolist())
 
-    def execute_many_single(self, query, values):
-        return [row[0] for row in self.cursor.execute(query, values).fetchall()]
-    
-    def execute_one_single(self, query, values):
-        result = self.execute_many_single(query, values)
-        if result:
-            return result[0]
-        return None
+    database = get_database()
+    people = [{'name': database.name(int(person_id)),
+               'id': int(person_id)}
+              for person_id in database.query('SELECT ID FROM people ORDER BY LastName, FirstName').ID.values]
 
-    def people(self):
-        return self.cursor.execute('select * from people').fetchall()
-
-    def name(self, person_id):
-        return self.cursor.execute('select ifnull(firstfirstname,"") || " " || ifnull(firstname,"") || " " || ifnull(middlename,"") || " " || ifnull(lastname," ") from people where id = ?', [person_id]).fetchone()[0].lstrip()
-
-    def wife(self, person_id):
-        return self.execute_one_single('select id from people where husband = ?', [person_id])
-
-    def husband(self, person_id):
-        return self.execute_one_single('select id from people where wife = ?', [person_id])
-
-    def children(self, parent=None, father=None, mother=None):
-        if parent is not None:
-            return self.execute_many_single('select id from people where father = ? or mother = ?', [parent] * 2)
-        elif mother is None:
-            return self.execute_many_single('select id from people where father = ?', [father])
-        elif father is None:
-            return self.execute_many_single('select id from people where mother = ?', [mother])
-        return self.execute_many_single('select id from people where father = ? and mother = ?', [father, mother])
-
-    def generation(self, parents):
-        question_marks = ','.join(['?'] * len(parents))
-        query = f'select id from people where father in ({question_marks}) or mother in ({question_marks})'
-        return self.execute_many_single(query, parents + parents)
+    return render_template('tree.html', descendents=descendents.ToJSon(), ancestors=ancestors.ToJSon(), timelines=timelines.ToJSon(), people=people, person_id=root_person_id)
 
 
-database_file_path = os.path.expanduser('family.db')
-database = Database(database_file_path)
+def create_app(test_config=None):
+    app = Flask(__name__, instance_relative_config=True)
+    app.config.from_mapping(SECRET_KEY='dev', DATABASE=os.path.join(app.instance_path, 'family.db'))
 
-data = pd.read_sql_query('select * from people;', database.connection)
-
-# Replace null values with -1 to indicate not specified.
-for column in ['Husband', 'Wife', 'Father', 'Mother']:
-    data[column][data[column].copy().isnull()] = -1
-columns = {}
-for column in data.columns:
-    # if 'date' in column:
-        # data_type = 'date'
-    if data.dtypes[column] in ['O']:
-        data_type = 'string'
+    if test_config is None:
+        app.config.from_pyfile('config.py', silent=True)
     else:
-        data_type = 'number'
-    columns[column] = (data_type, column)
+        app.config.from_mapping(test_config)
 
-table = DataTable(columns)
-table.LoadData(data.to_dict('index').values())
+    os.makedirs(app.instance_path, exist_ok=True)
 
-timelines = sql_to_data_table('stays', {'Start': 'date', 
-                                        'End': 'date'})
+    app.register_blueprint(home)
 
-locations = sql_to_data_table('locations')
+    initialize_app(app)
 
-with open('table.js', 'w') as output_file:
-    code = f"""function loadFamilyData()
-        {{
-            {table.ToJSCode('familyTable')}
-            return familyTable;
-        }}
+    return app
 
-        function loadTimelines()
-        {{
-            {timelines.ToJSCode('timelines')}
-            return timelines;
-        }}
-
-        function loadLocations()
-        {{
-            {locations.ToJSCode('locations')}
-            return locations;
-        }}"""
-    output_file.write(code)
