@@ -46,10 +46,15 @@
                 var peopleInfo = [];
 
                 var chart = new google.visualization.OrgChart(document.getElementById('familyTree'));
-                chart.draw(familyTable, {'allowHtml': true});
+                chart.draw(familyTable, {
+                    'allowHtml': true, 
+                });
+                google.visualization.events.addListener(chart, "select", function(event) {
+                });
 
-                var ancestorChart = new google.visualization.OrgChart(document.getElementById('ancestorTree'));
+                ancestorChart = new google.visualization.OrgChart(document.getElementById('ancestorTree'));
                 ancestorChart.draw(ancestors, {'allowHtml': true});
+                
 
                 var timeline = new google.visualization.Timeline(document.getElementById('timeline'));
 
@@ -59,7 +64,10 @@
 
             $(document).ready(function()
             {
-                $("#sidebar").mCustomScrollbar({theme: "minimal"});
+                $("#sidebar").mCustomScrollbar({
+                    theme: "minimal",
+                    setTop: $("a[name='personLink']").offsetTop
+                });
                 $("#sideBarToggle").on("click", function ()
                 {
                     $("#sidebar").toggleClass("active");
@@ -118,6 +126,7 @@
                     {% for person in people %}
                     {% if person.id == person_id %}
                     {% set class = "list-group-item list-group-item-action active" %}
+                    <a name="personLink"></a>
                     {% else %}
                     {% set class = "list-group-item list-group-item-action" %}
                     {% endif %}
